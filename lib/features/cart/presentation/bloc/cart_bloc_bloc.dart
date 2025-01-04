@@ -1,4 +1,3 @@
-import 'package:compareitr/core/usecase/usecase.dart';
 import 'package:compareitr/core/common/entities/cart_entity.dart';
 import 'package:compareitr/features/cart/domain/usecases/add_cart_item_usecase.dart';
 import 'package:compareitr/features/cart/domain/usecases/remove_cart_item_usecase.dart';
@@ -44,55 +43,52 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     quantity: event.quantity,
   ));
 
-  result.fold(
-    (failure) => emit(CartError(message: failure.message)),
-    (_) {
-      // After adding, trigger GetCartItems to fetch updated items
-      add(GetCartItems(cartId: event.cartId, ));
-    },
-  );
-}
+    result.fold(
+      (failure) => emit(CartError(message: failure.message)),
+      (_) {
+        add(GetCartItems(cartId: event.cartId));
+      },
+    );
+  }
 
-Future<void> _onRemoveCartItem(
-    RemoveCartItem event, Emitter<CartState> emit) async {
-  emit(CartLoading()); // Show loading before removing
-  final result = await _removeCartItemUsecase(RemoveCartItemParams(
-    productId: event.productId,
-  ));
+  Future<void> _onRemoveCartItem(RemoveCartItem event, Emitter<CartState> emit) async {
+    emit(CartLoading());
+    final result = await _removeCartItemUsecase(RemoveCartItemParams(
+      productId: event.productId,
+    ));
 
-  result.fold(
-    (failure) => emit(CartError(message: failure.message)),
-    (_) {
-      // After removing an item, trigger GetCartItems to fetch updated items
-      add(GetCartItems(cartId: event.cartId));
-    },
-  );
-}
+    result.fold(
+      (failure) => emit(CartError(message: failure.message)),
+      (_) {
+        add(GetCartItems(cartId: event.cartId));
+      },
+    );
+  }
 
-Future<void> _onGetCartItems(
-    GetCartItems event, Emitter<CartState> emit) async {
-  emit(CartLoading());
-  final result = await _getCartItemsUsecase(event.cartId);
+  Future<void> _onGetCartItems(GetCartItems event, Emitter<CartState> emit) async {
+    emit(CartLoading());
+    final result = await _getCartItemsUsecase(event.cartId);
 
-  result.fold(
-    (failure) => emit(CartError(message: failure.message)),
-    (cartItems) => emit(CartLoaded(cartItems: cartItems)),
-  );
-}
+    result.fold(
+      (failure) => emit(CartError(message: failure.message)),
+      (cartItems) => emit(CartLoaded(cartItems: cartItems)),
+    );
+  }
 
-
-  // Handle the UpdateCartItem event
   Future<void> _onUpdateCartItem(UpdateCartItem event, Emitter<CartState> emit) async {
     emit(CartLoading());
     final result = await _updateCartItemUsecase(UpdateCartItemParams(
       cartId: event.cartId,
-      productId: event.productId,
+      id: event.id,
       quantity: event.quantity,
     ));
 
     result.fold(
       (failure) => emit(CartError(message: failure.message)),
-      (_) => add(GetCartItems(cartId: event.cartId)), // Fetch updated cart items after updating
+      (_) {
+        // Fetch the updated cart items immediately after the update
+        add(GetCartItems(cartId: event.cartId));
+      },
     );
   }
 }

@@ -37,12 +37,12 @@ final class GetCartItems extends CartEvent {
 
 final class UpdateCartItem extends CartEvent {
   final String cartId;
-  final String productId;
+  final String id;
   final int quantity;
 
   UpdateCartItem({
     required this.cartId,
-    required this.productId,
+    required this.id,
     required this.quantity,
   });
 }

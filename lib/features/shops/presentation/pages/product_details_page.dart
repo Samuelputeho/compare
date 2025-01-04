@@ -2,6 +2,7 @@ import 'package:compareitr/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:compareitr/core/common/entities/cart_entity.dart';
 import 'package:compareitr/core/common/entities/product_entity.dart';
 import 'package:compareitr/features/cart/presentation/bloc/cart_bloc_bloc.dart';
+import 'package:compareitr/features/cart/presentation/pages/cart_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_iconly/flutter_iconly.dart';
@@ -21,6 +22,7 @@ class ProductDetailsPage extends StatefulWidget {
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
   bool _isAdded = false;
   int _quantity = 1;
+  bool _isZoomed = false;
 
   String getShopName() {
     return widget.product.shopName;
@@ -28,76 +30,74 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
   // Function to add or update cart item
   void _addOrUpdateCartItem() {
-  final appUserState = context.read<AppUserCubit>().state;
+    final appUserState = context.read<AppUserCubit>().state;
 
-  if (appUserState is AppUserLoggedIn) {
-    final cartId = appUserState.user.id;
+    if (appUserState is AppUserLoggedIn) {
+      final cartId = appUserState.user.id;
 
-    if (cartId.isNotEmpty) {
-      final state = context.read<CartBloc>().state;
+      if (cartId.isNotEmpty) {
+        final state = context.read<CartBloc>().state;
 
-      if (state is CartLoaded) {
-        final existingItem = state.cartItems.firstWhere(
-          (item) =>
-              item.itemName == widget.product.name &&
-              item.shopName == getShopName(),
-          orElse: () => CartEntity(
-            id: '', // Default empty id for new cart item
-            cartId: cartId, // Use logged-in user ID for cartId
-            itemName: '', // Placeholder if no item found
-            shopName: '', // Placeholder
-            imageUrl: '', // Placeholder
-            price: 0.0, // Placeholder
-            quantity: 0, // Placeholder
-          ),
-        );
+        if (state is CartLoaded) {
+          final existingItem = state.cartItems.firstWhere(
+            (item) =>
+                item.itemName == widget.product.name &&
+                item.shopName == getShopName(),
+            orElse: () => CartEntity(
+              id: '', // Default empty id for new cart item
+              cartId: cartId, // Use logged-in user ID for cartId
+              itemName: '', // Placeholder if no item found
+              shopName: '', // Placeholder
+              imageUrl: '', // Placeholder
+              price: 0.0, // Placeholder
+              quantity: 0, // Placeholder
+            ),
+          );
 
-        if (existingItem.itemName.isNotEmpty) {
-          // If the item exists, log the productId being passed
-          print("Removing item with productId: ${existingItem.id}");
+          if (existingItem.itemName.isNotEmpty) {
+            // If the item exists, log the productId being passed
+            print("Removing item with productId: ${existingItem.id}");
 
-          // Remove the item using the correct productId
-          context.read<CartBloc>().add(RemoveCartItem(
-            cartId: existingItem.cartId, 
-            productId: existingItem.id, // Pass correct productId here
-          ));
+            // Remove the item using the correct productId
+            context.read<CartBloc>().add(RemoveCartItem(
+              cartId: existingItem.cartId, 
+              productId: existingItem.id, // Pass correct productId here
+            ));
 
-          // Log the add action
-          print("Adding item with product: ${widget.product.name} and quantity: $_quantity");
+            // Log the add action
+            print("Adding item with product: ${widget.product.name} and quantity: $_quantity");
 
-          // Add the updated item back with the new quantity
-          context.read<CartBloc>().add(AddCartItem(
-            cartId: cartId,
-            itemName: widget.product.name,
-            shopName: getShopName(),
-            imageUrl: widget.product.imageUrl,
-            price: widget.product.price,
-            quantity: _quantity,
-          ));
-        } else {
-          // If the item doesn't exist, log the add action
-          print("Adding new item: ${widget.product.name} with quantity: $_quantity");
+            // Add the updated item back with the new quantity
+            context.read<CartBloc>().add(AddCartItem(
+              cartId: cartId,
+              itemName: widget.product.name,
+              shopName: getShopName(),
+              imageUrl: widget.product.imageUrl,
+              price: widget.product.price,
+              quantity: _quantity,
+            ));
+          } else {
+            // If the item doesn't exist, log the add action
+            print("Adding new item: ${widget.product.name} with quantity: $_quantity");
 
-          // Add the item to the cart
-          context.read<CartBloc>().add(AddCartItem(
-            cartId: cartId,
-            itemName: widget.product.name,
-            shopName: getShopName(),
-            imageUrl: widget.product.imageUrl,
-            price: widget.product.price,
-            quantity: _quantity,
-          ));
+            // Add the item to the cart
+            context.read<CartBloc>().add(AddCartItem(
+              cartId: cartId,
+              itemName: widget.product.name,
+              shopName: getShopName(),
+              imageUrl: widget.product.imageUrl,
+              price: widget.product.price,
+              quantity: _quantity,
+            ));
+          }
+
+          // Trigger a refresh by fetching updated cart items
+          print("Refreshing cart with cartId: $cartId");
+          context.read<CartBloc>().add(GetCartItems(cartId: cartId));
         }
-
-        // Trigger a refresh by fetching updated cart items
-        print("Refreshing cart with cartId: $cartId");
-        context.read<CartBloc>().add(GetCartItems(cartId: cartId));
       }
     }
   }
-}
-
-
 
   @override
   void initState() {
@@ -143,13 +143,31 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           children: [
             Stack(
               children: [
-                Container(
-                  height: MediaQuery.of(context).size.height * 0.4,
-                  width: double.infinity,
-                  color: Colors.grey[300],
-                  child: Image.network(
-                    widget.product.imageUrl,
-                    fit: BoxFit.contain,
+                // Image section with zoom on double tap
+                GestureDetector(
+                  onDoubleTap: () {
+                    setState(() {
+                      _isZoomed = !_isZoomed;
+                    });
+                  },
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _isZoomed
+                        ? InteractiveViewer(
+                            panEnabled: true,
+                            boundaryMargin: EdgeInsets.all(10),
+                            minScale: 1.0,
+                            maxScale: 4.0,
+                            child: Image.network(
+                              widget.product.imageUrl,
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                        : Image.network(
+                            widget.product.imageUrl,
+                            fit: BoxFit.contain,
+                            key: ValueKey<int>(1),
+                          ),
                   ),
                 ),
                 if (_isAdded)
@@ -216,10 +234,20 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(
-                          IconlyLight.bag,
-                          color: Colors.grey,
-                          size: 30,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CartPage(),
+                  ),
+                );
+                          },
+                          child: Icon(
+                            IconlyLight.bag,
+                            color: Colors.grey,
+                            size: 30,
+                          ),
                         ),
                         SizedBox(width: 20),
                         BlocBuilder<CartBloc, CartState>(
@@ -251,7 +279,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                                           });
                                           context.read<CartBloc>().add(UpdateCartItem(
                                             cartId: existingItem.cartId,
-                                            productId: existingItem.id,
+                                            id: existingItem.id,
                                             quantity: _quantity,
                                           ));
 
@@ -275,7 +303,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                                           });
                                           context.read<CartBloc>().add(UpdateCartItem(
                                             cartId: existingItem.cartId,
-                                            productId: existingItem.id,
+                                            id: existingItem.id,
                                             quantity: _quantity,
                                           ));
 

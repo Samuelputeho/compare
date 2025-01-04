@@ -1,4 +1,5 @@
 import 'package:compareitr/core/common/cubits/app_user/app_user_cubit.dart';
+import 'package:compareitr/core/common/network/network_connection.dart';
 import 'package:compareitr/features/auth/data/datasourses/auth_remote_data_source.dart';
 import 'package:compareitr/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:compareitr/features/auth/domain/repository/auth_repository.dart';
@@ -12,11 +13,20 @@ import 'package:compareitr/features/card_swiper/data/repository/card_swiper_repo
 import 'package:compareitr/features/card_swiper/domain/repository/card_swiper_repository.dart';
 import 'package:compareitr/features/cart/domain/repository/cart_repository.dart';
 import 'package:compareitr/features/cart/domain/usecases/update_cart_item_usecase.dart';
+import 'package:compareitr/features/order/data/datasources/order_remote_data_source.dart';
+import 'package:compareitr/features/order/data/repository/order_repository_impl.dart';
+import 'package:compareitr/features/order/domain/repositories/order_repository.dart';
+import 'package:compareitr/features/order/domain/usecases/create_order.dart';
+import 'package:compareitr/features/order/domain/usecases/get_order_by_id.dart';
+import 'package:compareitr/features/order/domain/usecases/get_user_order.dart';
+import 'package:compareitr/features/order/presentation/bloc/order_bloc.dart';
+import 'package:compareitr/features/recently_viewed/data/datasource/recently_viewed_local_datasource.dart';
 import 'package:compareitr/features/recently_viewed/data/datasource/recently_viewed_remote_data_source.dart';
 import 'package:compareitr/features/recently_viewed/data/repository/recent_repo_impl.dart';
 import 'package:compareitr/features/recently_viewed/domain/repository/recent_repo.dart';
 import 'package:compareitr/features/recently_viewed/domain/usecases/add_recent_item_usecase.dart';
 import 'package:compareitr/features/recently_viewed/domain/usecases/get_recent_items_usecase.dart';
+import 'package:compareitr/features/recently_viewed/domain/usecases/remove_recent_item_usecase.dart';
 import 'package:compareitr/features/recently_viewed/presentation/bloc/recent_bloc.dart';
 import 'package:compareitr/features/sales/data/datasources/sale_card_remote_data_source.dart';
 import 'package:compareitr/features/sales/data/datasources/sale_products_data_source.dart';
@@ -28,8 +38,12 @@ import 'package:compareitr/features/sales/domain/usecases/get_all_sale_card_usec
 import 'package:compareitr/features/sales/domain/usecases/get_all_sale_products_usecase.dart';
 import 'package:compareitr/features/sales/presentation/bloc/salecard_bloc.dart';
 import 'package:compareitr/features/sales/presentation/bloc/saleproducts_bloc.dart';
+import 'package:compareitr/features/shops/data/datasources/shops_local_datasource.dart';
 import 'package:compareitr/features/shops/domain/usecase/get_categories.dart';
 import 'package:get_it/get_it.dart';
+import 'package:hive/hive.dart';
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/secrets/app_secrets.dart';
 import 'features/auth/domain/usecases/logout_usecase.dart';
@@ -68,18 +82,34 @@ Future<void> initdependencies() async {
   _initSaved();
   _initSalecard();
   _initSaleProduct();
+  _initOrder();
   final supabase = await Supabase.initialize(
     url: AppSecrets.supabaseUrl,
     anonKey: AppSecrets.supabaseKey,
   );
+
+  final directory = await getApplicationDocumentsDirectory();
+  Hive.init(directory.path);
+
+  await Hive.openBox('shops');
+
+  serviceLocator.registerLazySingleton(() => Hive.box('shops'));
+
   serviceLocator.registerLazySingleton(() => supabase.client);
   serviceLocator.registerLazySingleton(() => AppUserCubit());
+  serviceLocator.registerFactory(() => InternetConnection());
+  serviceLocator.registerFactory<ConnectionChecker>(() => ConnectionCheckerImpl(serviceLocator()));
 }
 
 void _initShops() {
   serviceLocator
     ..registerFactory<ShopsRemoteDataSource>(
       () => ShopsRemoteDataSourceImpl(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory<ShopsLocalDataSource>(
+      () => ShopsLocalDataSourceImpl(
         serviceLocator(),
       ),
     )
@@ -154,6 +184,7 @@ void _initAuth() {
     )
     ..registerFactory<AuthRepository>(
       () => AuthRepositoryImpl(
+        serviceLocator(),
         serviceLocator(),
       ),
     )
@@ -249,9 +280,15 @@ void _initRecentlyViewed() {
         serviceLocator(), // Assuming you have a SupabaseClient registered
       ),
     )
+    ..registerFactory<RecentlyViewedLocalDataSource>(
+      () => RecentlyViewedLocalDataSourceImpl(
+        serviceLocator(), // Assuming you have a SupabaseClient registered
+      ),
+    )
     ..registerFactory<RecentRepository>(
       () => RecentRepoImpl(
         serviceLocator(),
+        
       ),
     )
     ..registerFactory<AddRecentItemUsecase>(
@@ -264,10 +301,18 @@ void _initRecentlyViewed() {
         serviceLocator(),
       ),
     )
+
+    ..registerFactory<RemoveRecentItemUsecase>(
+      () => RemoveRecentItemUsecase(
+        serviceLocator(),
+      ),
+    )
+
     ..registerFactory<RecentBloc>(
       () => RecentBloc(
         getRecentItemsUsecase: serviceLocator(),
         addRecentItemUsecase: serviceLocator(),
+        removeRecentItemUsecase: serviceLocator(),
       ),
     );
 }
@@ -352,6 +397,42 @@ void _initSaleProduct() {
     ..registerFactory<SaleProductBloc>(
       () => SaleProductBloc(
         getAllProductsUseCase: serviceLocator(),
+      ),
+    );
+}
+
+void _initOrder() {
+  serviceLocator
+    ..registerFactory<OrderRemoteDataSource>( 
+      () => OrderRemoteDataSourceImpl(
+        serviceLocator(), // Assuming you have a SupabaseClient registered
+      ),
+    )
+    ..registerFactory<OrderRepository>(
+      () => OrderRepositoryImpl(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory<CreateOrder>(
+      () => CreateOrder(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory<GetUserOrders>(
+      () => GetUserOrders(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory<GetOrderById>(
+      () => GetOrderById(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory<OrderBloc>(
+      () => OrderBloc(
+        createOrderUsecase: serviceLocator(),
+        getUserOrdersUsecase: serviceLocator(),
+        getOrderByIdUsecase: serviceLocator(),
       ),
     );
 }

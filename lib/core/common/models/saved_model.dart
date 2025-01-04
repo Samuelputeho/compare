@@ -27,6 +27,7 @@ class SavedModel extends SavedEntity {
       'shopName': shopName,
       'savedId': savedId,
       'price': price,
+      
     };
   }
 

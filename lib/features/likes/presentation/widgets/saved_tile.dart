@@ -6,18 +6,22 @@ class SavedTile extends StatelessWidget {
   final String foodImage;
   final String foodPrice;
   final String foodQuantity;
-
   final String foodShop;
   final VoidCallback onDelete;
+  final VoidCallback onPlusTap;
+  final bool isInCart;
 
-  const SavedTile(
-      {super.key,
-      required this.foodName,
-      required this.foodImage,
-      required this.foodPrice,
-      required this.foodQuantity,
-      required this.foodShop,
-      required this.onDelete});
+  const SavedTile({
+    super.key,
+    required this.foodName,
+    required this.foodImage,
+    required this.foodPrice,
+    required this.foodQuantity,
+    required this.foodShop,
+    required this.onDelete,
+    required this.onPlusTap,
+    required this.isInCart,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -45,18 +49,26 @@ class SavedTile extends StatelessWidget {
                   left: 8,
                   child: GestureDetector(
                     onTap: onDelete,
-                    child: Icon(
+                    child: const Icon(
                       IconlyLight.delete,
                       color: Colors.grey,
                     ),
                   ),
                 ),
-                const Positioned(
+                Positioned(
                   top: 8,
                   right: 8,
-                  child: Icon(
-                    IconlyLight.plus,
-                    color: Colors.grey,
+                  child: GestureDetector(
+                    onTap: onPlusTap,
+                    child: isInCart
+                        ? Icon(
+                            IconlyBold.plus, // Bold "Add" icon if in cart
+                            color: Colors.green, // Green color if in cart
+                          )
+                        : Icon(
+                            IconlyLight.plus, // Regular "Add" icon if not in cart
+                            color: Colors.grey, // Regular grey color
+                          ),
                   ),
                 ),
               ],
@@ -68,7 +80,14 @@ class SavedTile extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(foodName),
+                Expanded(
+                  child: Text(
+                    foodName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
                 Row(
                   children: [],
                 ),

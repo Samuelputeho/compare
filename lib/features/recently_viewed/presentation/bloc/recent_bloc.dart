@@ -2,6 +2,7 @@ import 'package:compareitr/core/common/entities/recently_viewed_entity.dart';
 
 import 'package:compareitr/features/recently_viewed/domain/usecases/add_recent_item_usecase.dart';
 import 'package:compareitr/features/recently_viewed/domain/usecases/get_recent_items_usecase.dart';
+import 'package:compareitr/features/recently_viewed/domain/usecases/remove_recent_item_usecase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -13,15 +14,20 @@ class RecentBloc extends Bloc<RecentEvent, RecentState> {
 
   final GetRecentItemsUsecase _getRecentItemsUsecase;
 
+  final RemoveRecentItemUsecase _removeRecentItemUsecase;
+
   RecentBloc({
     required AddRecentItemUsecase addRecentItemUsecase,
     required GetRecentItemsUsecase getRecentItemsUsecase,
+    required RemoveRecentItemUsecase removeRecentItemUsecase,
   })  : _addRecentItemUsecase = addRecentItemUsecase,
         _getRecentItemsUsecase = getRecentItemsUsecase,
+        _removeRecentItemUsecase = removeRecentItemUsecase,
         super(RecentInitial()) {
     on<AddRecentItem>(_onAddRecentItem);
     on<GetRecentItems>(_onGetRecentItems);
     on<CheckIfProductExists>(_onCheckIfProductExists);
+    on<RemoveRecentlyItem>(_onRemoveRecentItem);
   }
 
   Future<void> _onAddRecentItem(
@@ -102,4 +108,16 @@ class RecentBloc extends Bloc<RecentEvent, RecentState> {
   );
 }
 
+  Future<void> _onRemoveRecentItem(
+      RemoveRecentlyItem event, Emitter<RecentState> emit) async {
+    emit(RecentLoading());
+    final result = await _removeRecentItemUsecase(RemoveRecentItemParams(id: event.id));
+
+    result.fold(
+      (failure) => emit(RecentError(message: failure.message)),
+      (_) {
+        add(GetRecentItems(recentId: event.recentId));
+      },
+    );
+  }
 }

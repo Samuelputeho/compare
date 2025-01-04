@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/all_products/all_products_bloc.dart';
+import '../bloc/all_categories/all_categories_bloc.dart';
 import '../widgets/product_tile.dart';
 
 class ProductPage extends StatefulWidget {
@@ -29,15 +30,64 @@ class _ProductPageState extends State<ProductPage> {
             category: widget.categoryName,
           ),
         );
+    context.read<AllCategoriesBloc>().add(
+          GetCategoriesByShopNameEvent(shopName: widget.shopName),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.categoryName,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        title: BlocBuilder<AllCategoriesBloc, AllCategoriesState>(
+          builder: (context, state) {
+            if (state is CategoriesByShopNameSuccess) {
+              return PopupMenuButton<String>(
+                initialValue: widget.categoryName,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.categoryName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+                onSelected: (String newCategory) {
+                  if (newCategory != widget.categoryName) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProductPage(
+                          categoryName: newCategory,
+                          shopName: widget.shopName,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (BuildContext context) {
+                  return state.categories.map((category) {
+                    return PopupMenuItem<String>(
+                      value: category.categoryName,
+                      child: Text(category.categoryName),
+                    );
+                  }).toList();
+                },
+              );
+            }
+            return Text(
+              widget.categoryName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          },
         ),
       ),
       body: Column(

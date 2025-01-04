@@ -15,7 +15,7 @@ abstract interface class CartRepository {
   Future<Either<Failure, List<CartEntity>>> getCartItems(String cartId);
   Future<Either<Failure, void>> updateCartItem({
     required String cartId,
-    required String productId,
+    required String id,
     required int quantity,
   });
 }

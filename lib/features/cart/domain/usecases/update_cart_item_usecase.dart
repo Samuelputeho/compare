@@ -12,7 +12,7 @@ class UpdateCartItemUsecase implements UseCase<void, UpdateCartItemParams> {
   Future<Either<Failure, void>> call(UpdateCartItemParams params) async {
     return await cartRepository.updateCartItem(
       cartId: params.cartId,
-      productId: params.productId,
+      id: params.id,
       quantity: params.quantity,
     );
   }
@@ -20,12 +20,12 @@ class UpdateCartItemUsecase implements UseCase<void, UpdateCartItemParams> {
 
 class UpdateCartItemParams {
   final String cartId;
-  final String productId;
+  final String id;
   final int quantity;
 
   UpdateCartItemParams({
     required this.cartId,
-    required this.productId,
+    required this.id,
     required this.quantity,
   });
 }

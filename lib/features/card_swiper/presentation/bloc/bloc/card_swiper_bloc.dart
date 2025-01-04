@@ -1,3 +1,4 @@
+import 'package:compareitr/core/common/cache/cache.dart';
 import 'package:compareitr/core/common/entities/card_swiper_pictures_entinty.dart';
 import 'package:compareitr/features/card_swiper/domain/usecase/card_swiper.dart';
 import 'package:flutter/material.dart';
@@ -10,14 +11,13 @@ part 'card_swiper_state.dart';
 class CardSwiperBloc extends Bloc<CardSwiperEvent, CardSwiperState> {
   final GetAllCardSwiperPicturesUseCase _getAllCardSwiperPicturesUseCase;
 
+  // Static list for in-memory cache of the swiper pictures
   static List<CardSwiperPicturesEntinty> allPictures = [];
 
-  CardSwiperBloc(
-      {required GetAllCardSwiperPicturesUseCase
-          getAllCardSwiperPicturesUseCase})
+  CardSwiperBloc({required GetAllCardSwiperPicturesUseCase getAllCardSwiperPicturesUseCase})
       : _getAllCardSwiperPicturesUseCase = getAllCardSwiperPicturesUseCase,
         super(CardSwiperInitial()) {
-    on<CardSwiperEvent>((event, emit) {});
+    on<CardSwiperEvent>((event, emit) {}); // You can handle any other events here if needed
     on<GetAllCardSwiperPicturesEvent>(_onGetAllCardSwiperPictures);
   }
 
@@ -25,15 +25,27 @@ class CardSwiperBloc extends Bloc<CardSwiperEvent, CardSwiperState> {
     GetAllCardSwiperPicturesEvent event,
     Emitter<CardSwiperState> emit,
   ) async {
-    emit(CardSwiperLoading(loadingPictures: allPictures));
-    final res = await _getAllCardSwiperPicturesUseCase(NoParams());
+    // Check if the pictures are already cached
+    var cachedPictures = CacheManager.getCache('cardSwiperPictures');
 
-    res.fold(
-      (l) => emit(CardSwiperFailure(message: l.message)),
-      (r) {
-        allPictures = r;
-        emit(CardSwiperSuccess(pictures: r));
-      },
-    );
+    if (cachedPictures != null && cachedPictures.isNotEmpty) {
+      // If the pictures are cached, emit them immediately
+      emit(CardSwiperSuccess(pictures: cachedPictures));
+    } else {
+      // If not cached, fetch from the API
+      emit(CardSwiperLoading(loadingPictures: allPictures));
+
+      final res = await _getAllCardSwiperPicturesUseCase(NoParams());
+
+      res.fold(
+        (failure) => emit(CardSwiperFailure(message: failure.message)),
+        (pictures) {
+          // Cache the pictures after successful API response
+          CacheManager.cache('cardSwiperPictures', pictures);
+          allPictures = pictures;
+          emit(CardSwiperSuccess(pictures: pictures));
+        },
+      );
+    }
   }
 }

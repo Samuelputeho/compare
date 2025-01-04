@@ -12,6 +12,8 @@ abstract interface class RecentRepository {
     required double price,
   });
 
+  Future<Either<Failure, void>> removeRecentlyItem(String id);
+
   Future<Either<Failure, List<RecentlyViewedEntity>>> getRecentItems(
     String recentId,
   );

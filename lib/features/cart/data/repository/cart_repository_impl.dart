@@ -88,14 +88,14 @@ class CartRepositoryImpl implements CartRepository {
   @override
   Future<Either<Failure, void>> updateCartItem({
     required String cartId,
-    required String productId,
+    required String id,
     required int quantity,
   }) async {
     try {
       // Call the remote data source to update the cart item
       await remoteDataSource.updateCartItem(
         cartId: cartId,
-        productId: productId,
+        id: id,
         quantity: quantity,
       );
 

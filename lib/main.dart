@@ -2,6 +2,7 @@ import 'package:compareitr/bottom_bar.dart';
 import 'package:compareitr/core/common/cubits/app_user/app_user_cubit.dart';
 import 'package:compareitr/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:compareitr/features/card_swiper/presentation/bloc/bloc/card_swiper_bloc.dart';
+import 'package:compareitr/features/order/presentation/bloc/order_bloc.dart';
 import 'package:compareitr/features/recently_viewed/presentation/bloc/recent_bloc.dart';
 import 'package:compareitr/features/sales/presentation/bloc/salecard_bloc.dart';
 import 'package:compareitr/features/sales/presentation/bloc/saleproducts_bloc.dart';
@@ -70,6 +71,10 @@ void main() async {
         // Added CartBloc provider
         create: (_) => serviceLocator<SaleProductBloc>(),
       ),
+      BlocProvider(
+        // Added CartBloc provider
+        create: (_) => serviceLocator<OrderBloc>(),
+      ),
     ],
     child: const MyApp(),
   ));
@@ -108,21 +113,23 @@ class _MyAppState extends State<MyApp> {
             if (cartId.isNotEmpty) {
               context.read<CartBloc>().add(GetCartItems(cartId: cartId));
             }
-
+context.read<AuthBloc>();
             // Dispatch other events
             context.read<AllCategoriesBloc>().add(GetAllCategoriesEvent());
             context.read<AllShopsBloc>().add(GetAllShopsEvent());
             context.read<AllProductsBloc>().add(GetAllProductsEvent());
             context.read<CardSwiperBloc>().add(GetAllCardSwiperPicturesEvent());
-            context.read<RecentBloc>().add(GetRecentItems(recentId: ''));
-            context.read<SavedBloc>().add(GetSavedItems(savedId: ''));
+            context.read<RecentBloc>().add(GetRecentItems(recentId: cartId));
+            context.read<SavedBloc>().add(GetSavedItems(savedId: cartId));
             context.read<SalecardBloc>().add(GetAllSaleCardEvent());
             context.read<SaleProductBloc>().add(GetAllSaleProductsEvent());
+            context.read<OrderBloc>().add( GetOrderByIdEvent(orderId: cartId));
 
             return const MainNavigationPage();
           }
           // When the user is not logged in, navigate to Login page
           context.read<AllCategoriesBloc>().add(GetAllCategoriesEvent());
+          context.read<AuthBloc>();
           return const LoginPage();
         },
       ),

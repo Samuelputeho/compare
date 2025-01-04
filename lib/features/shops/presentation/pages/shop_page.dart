@@ -1,6 +1,5 @@
 import 'package:compareitr/core/common/cubits/app_user/app_user_cubit.dart';
-import 'package:compareitr/features/auth/domain/usecases/update_user.dart';
-import 'package:compareitr/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:compareitr/features/cart/presentation/bloc/cart_bloc_bloc.dart';
 import 'package:compareitr/features/recently_viewed/presentation/bloc/recent_bloc.dart';
 import 'package:compareitr/features/saved/presentation/bloc/saved_bloc.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +12,7 @@ import '../widgets/nov_tile.dart';
 import '../widgets/shop_tile.dart';
 import 'categories_page.dart';
 import 'package:compareitr/features/card_swiper/presentation/bloc/bloc/card_swiper_bloc.dart';
+
 
 // Ensure this model is defined
 // Adjust the import based on your project structure
@@ -34,9 +34,19 @@ class _ShopPageState extends State<ShopPage> {
     super.initState();
     final recentId = (context.read<AppUserCubit>().state as AppUserLoggedIn)
         .user
-        .id; // Get user ID
+        .id; 
+        final cartId = (context.read<AppUserCubit>().state as AppUserLoggedIn)
+        .user
+        .id; 
+        context.read<CartBloc>().add(GetCartItems(cartId: cartId));// Get user ID
     context.read<RecentBloc>().add(GetRecentItems(recentId: recentId));
     context.read<AllShopsBloc>().add(GetAllShopsEvent());
+    final savedId = (context.read<AppUserCubit>().state as AppUserLoggedIn)
+        .user
+        .id; // Get user ID
+    context
+        .read<SavedBloc>()
+        .add(GetSavedItems(savedId: savedId));
 
     context.read<AllCategoriesBloc>().add(GetAllCategoriesEvent());
     context
@@ -63,6 +73,34 @@ class _ShopPageState extends State<ShopPage> {
     _pageController.dispose();
     _timer.cancel();
     super.dispose();
+  }
+
+  void _showRemoveDialog(BuildContext context, String itemId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Remove Item'),
+          content: Text('Are you sure you want to remove this item from recently viewed?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final recentId = (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
+                context.read<RecentBloc>().add(RemoveRecentlyItem(recentId: recentId, id: itemId)); // Dispatch the remove event
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text('Remove'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -170,7 +208,7 @@ class _ShopPageState extends State<ShopPage> {
                 } else if (state is RecentError) {
                   return Center(child: Text(state.message));
                 } else if (state is RecentLoaded) {
-                  final recentItems = state.recentItems;
+                  final recentItems = state.recentItems.reversed.toList();
                   if (recentItems.isEmpty) {
                     return const Center(
                         child: Text('No recently viewed items'));
@@ -183,78 +221,151 @@ class _ShopPageState extends State<ShopPage> {
                       itemCount: recentItems.length,
                       itemBuilder: (context, index) {
                         final item = recentItems[index];
-                        return Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: NovTile(
-                            foodImage: item
-                                .image, // Assuming the image URL is stored here
-                            foodName: item.name,
-                            foodPrice: 'N\$${item.price.toStringAsFixed(2)}',
-                            foodQuantity: item.measure,
-                            foodRating:
-                                '5.0', // You may want to adjust this based on your data
-                            foodShop: item.shopName,
-                            onHeartTap: () async {
-                              try {
-                                // Fetch saved items from the bloc
-                                final savedItemsState =
-                                    context.read<SavedBloc>().state;
+                        return BlocBuilder<CartBloc, CartState>(
+                          builder: (context, cartState) {
+                            bool isInCart = false;
+                            if (cartState is CartLoaded) {
+                              isInCart = cartState.cartItems.any((cartItem) =>
+                                cartItem.itemName == item.name &&
+                                cartItem.shopName == item.shopName &&
+                                cartItem.price == item.price
+                              );
+                            }
 
-                                // Check if the state is loaded
-                                if (savedItemsState is SavedLoaded) {
-                                  // Check if the item already exists in the saved items
-                                  final exists = savedItemsState.savedItems
-                                      .any((savedItem) {
-                                    return savedItem.name == item.name &&
-                                        savedItem.price == item.price;
-                                  });
-
-                                  if (exists) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content:
-                                              Text('Product is already added')),
-                                    );
-                                  } else {
-                                    final savedId = (context
-                                            .read<AppUserCubit>()
-                                            .state as AppUserLoggedIn)
-                                        .user
-                                        .id;
-                                    // Dispatch the AddSavedItem event to the bloc
-                                    context.read<SavedBloc>().add(AddSavedItem(
-                                          name: item.name,
-                                          image: item.image,
-                                          measure: item.measure,
-                                          shopName: item.shopName,
-                                          savedId:
-                                              savedId, // Use your specific savedId here
-                                          price: item.price,
-                                        ));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text(
-                                              'Product added to saved items')),
-                                    );
-                                  }
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(
-                                            'Failed to fetch saved items')),
+                            return BlocBuilder<SavedBloc, SavedState>(
+                              builder: (context, savedState) {
+                                bool isSaved = false;
+                                if (savedState is SavedLoaded) {
+                                  isSaved = savedState.savedItems.any((savedItem) =>
+                                    savedItem.name == item.name &&
+                                    savedItem.shopName == item.shopName &&
+                                    savedItem.price == item.price
                                   );
                                 }
-                              } catch (e) {
-                                // Log the error
-                                print(
-                                    'Error occurred while adding item to saved: $e');
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text('An error occurred: $e')),
+
+                                return Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: NovTile(
+                                    foodImage: item.image,
+                                    foodName: item.name,
+                                    foodPrice: 'N\$${item.price.toStringAsFixed(2)}',
+                                    foodQuantity: item.measure,
+                                    foodRating: '5.0',
+                                    foodShop: item.shopName,
+                                    isInCart: isInCart,
+                                    isSaved: isSaved,
+                                    onHeartTap: () async {
+                                      try {
+                                        // Fetch saved items from the bloc
+                                        final savedItemsState =
+                                            context.read<SavedBloc>().state;
+
+                                        // Check if the state is loaded
+                                        if (savedItemsState is SavedLoaded) {
+                                          // Check if the item already exists in the saved items
+                                          final exists = savedItemsState.savedItems
+                                              .any((savedItem) {
+                                            return savedItem.name == item.name &&
+                                                savedItem.price == item.price;
+                                          });
+
+                                          if (exists) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                  content:
+                                                      Text('Product is already added')),
+                                            );
+                                          } else {
+                                            final savedId = (context
+                                                    .read<AppUserCubit>()
+                                                    .state as AppUserLoggedIn)
+                                                .user
+                                                .id;
+                                            // Dispatch the AddSavedItem event to the bloc
+                                            context.read<SavedBloc>().add(AddSavedItem(
+                                                  name: item.name,
+                                                  image: item.image,
+                                                  measure: item.measure,
+                                                  shopName: item.shopName,
+                                                  savedId:
+                                                      savedId, // Use your specific savedId here
+                                                  price: item.price,
+                                                ));
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                  content: Text(
+                                                      'Product added to saved items')),
+                                            );
+                                          }
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    'Failed to fetch saved items')),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        // Log the error
+                                        print(
+                                            'Error occurred while adding item to saved: $e');
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                              content: Text('An error occurred: $e')),
+                                        );
+                                      }
+                                    },
+                                    onPlusTap: () async {
+                                      try {
+                                        // Get cart state
+                                        final cartState = context.read<CartBloc>().state;
+                                        
+                                        if (cartState is CartLoaded) {
+                                          // Check if item already exists in cart
+                                          final exists = cartState.cartItems.any((cartItem) =>
+                                            cartItem.itemName == item.name &&
+                                            cartItem.shopName == item.shopName &&
+                                            cartItem.price == item.price
+                                          );
+
+                                          if (exists) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Product is already in cart')),
+                                            );
+                                          } else {
+                                            // Get user ID for cart
+                                            final cartId = (context.read<AppUserCubit>().state as AppUserLoggedIn).user.id;
+                                            
+                                            // Add item to cart
+                                            context.read<CartBloc>().add(AddCartItem(
+                                              cartId: cartId,
+                                              itemName: item.name,
+                                              shopName: item.shopName,
+                                              imageUrl: item.image,
+                                              price: item.price,
+                                              quantity: 1,
+                                            ));
+
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Product added to cart')),
+                                            );
+                                          }
+                                        }
+                                      } catch (e) {
+                                        print('Error adding item to cart: $e');
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('An error occurred: $e')),
+                                        );
+                                      }
+                                    },
+                                    onRemoveTap: () {
+                                      print('Removing item with ID: ${item.id}');
+                                      _showRemoveDialog(context, item.id);
+                                    },
+                                  ),
                                 );
-                              }
-                            },
-                          ),
+                              },
+                            );
+                          },
                         );
                       },
                     ),

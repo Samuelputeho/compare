@@ -72,12 +72,15 @@ class ProductTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 color: Colors.grey[100],
               ),
-              child: Image.network(
-                product.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Center(child: Icon(Icons.error));
-                },
+              child: Padding(
+                padding: EdgeInsets.all(5),
+                child: Image.network(
+                  product.imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Center(child: Icon(Icons.error));
+                  },
+                ),
               ),
             ),
             Padding(

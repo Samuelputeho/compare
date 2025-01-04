@@ -49,15 +49,25 @@ class CartTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(cartItem.itemName),
-                      IconButton(
-                        icon: Icon(Icons.close),
-                        onPressed: onRemove,
-                      ),
-                    ],
-                  ),
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  children: [
+    Expanded(
+      child: Text(
+        cartItem.itemName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+      ),
+    ),
+    IconButton(
+      icon: const Icon(Icons.close, color: Colors.grey),
+      onPressed: onRemove,
+    ),
+  ],
+),
                   Text(cartItem.shopName),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

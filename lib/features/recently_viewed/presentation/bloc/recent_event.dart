@@ -21,6 +21,13 @@ final class AddRecentItem extends RecentEvent {
   });
 }
 
+final class RemoveRecentlyItem extends RecentEvent {
+  final String recentId;
+  final String id;
+
+  RemoveRecentlyItem({required this.recentId,required this.id});
+}
+
 final class GetRecentItems extends RecentEvent {
   final String recentId;
 

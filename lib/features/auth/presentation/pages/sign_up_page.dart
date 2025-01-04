@@ -2,6 +2,7 @@ import 'package:compareitr/core/common/widgets/loader.dart';
 import 'package:compareitr/core/theme/app_pallete.dart';
 import 'package:compareitr/core/utils/show_snackbar.dart';
 import 'package:compareitr/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:compareitr/features/auth/presentation/pages/welcome_page.dart';
 import 'package:compareitr/features/auth/presentation/widgets/auth_button.dart';
 import 'package:compareitr/features/auth/presentation/widgets/auth_field.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +46,12 @@ class _SignUpPageState extends State<SignUpPage> {
             listener: (context, state) {
               if (state is AuthFailure) {
                 showSnackBar(context, state.message);
+              } else if (state is AuthSuccess) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const WelcomePage()),
+                  (route) => false,
+                );
               }
             },
             builder: (context, state) {

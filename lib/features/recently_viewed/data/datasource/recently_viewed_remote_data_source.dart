@@ -12,6 +12,8 @@ abstract interface class RecentlyViewedRemoteDataSource {
     required double price,
   });
 
+  Future<void> removeRecentlyItem(String id);
+
   Future<List<RecentlyViewedModel>> getRecentItems(String recentId);
 }
 
@@ -42,6 +44,18 @@ class RecentlyViewedRemoteDataSourceImpl
       await supabaseClient.from('recent').insert(recentItem.toJson());
     } on PostgrestException catch (e) {
       throw ServerException('Failed to add recent item: ${e.message}');
+    } catch (e) {
+      throw ServerException('Unexpected error: $e');
+    }
+  }
+
+  @override
+  Future<void> removeRecentlyItem(String id) async {
+    try {
+      // Delete the recent item by id
+      await supabaseClient.from('recent').delete().eq('id', id);
+    } on PostgrestException catch (e) {
+      throw ServerException('Failed to remove recent item: ${e.message}');
     } catch (e) {
       throw ServerException('Unexpected error: $e');
     }

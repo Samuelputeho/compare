@@ -16,7 +16,7 @@ abstract class CartRemoteDataSource {
   // New method to update the cart item's quantity
   Future<void> updateCartItem({
     required String cartId,
-    required String productId,
+    required String id,
     required int quantity,
   });
 }
@@ -85,24 +85,29 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
 
   // Update cart item quantity
   @override
-  Future<void> updateCartItem({
-    required String cartId,
-    required String productId,
-    required int quantity,
-  }) async {
-    try {
-      final response = await supabaseClient
-          .from('cart')
-          .update({'quantity': quantity}) // Update quantity
-          .eq('id', productId); // Use the product ID to identify the item
+Future<void> updateCartItem({
+  required String cartId,
+  required String id,
+  required int quantity,
+}) async {
+  try {
+    print('Updating item with id: $id in cart: $cartId to quantity: $quantity');
+    
+    final response = await supabaseClient
+        .from('cart')
+        .update({'quantity': quantity}) // Update the quantity field
+        .eq('id', id) // Ensure this matches the id in the cart table
+        .eq('cartId', cartId); // Ensure this matches the cartId
 
-      if (response.error != null) {
-        throw ServerException('Failed to update cart item: ${response.error!.message}');
-      }
-    } on PostgrestException catch (e) {
-      throw ServerException('Failed to update cart item: ${e.message}');
-    } catch (e) {
-      throw ServerException('Unexpected error: $e');
-    }
+    print('Response from update: $response');
+
+    // Check if the response is null or empty
+    
+  } on PostgrestException catch (e) {
+    throw ServerException('Failed to update cart item: ${e.message}');
+  } catch (e) {
+    throw ServerException('Unexpected error: $e');
   }
+}
+
 }

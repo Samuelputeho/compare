@@ -1,20 +1,32 @@
 import 'dart:io';
 
+import 'package:compareitr/core/common/network/network_connection.dart';
 import 'package:compareitr/core/error/exceptions.dart';
 import 'package:compareitr/core/error/failures.dart';
 import 'package:compareitr/features/auth/data/datasourses/auth_remote_data_source.dart';
 import 'package:compareitr/core/common/entities/user_entity.dart';
+import 'package:compareitr/features/auth/data/models/user_model.dart';
 import 'package:compareitr/features/auth/domain/repository/auth_repository.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
-  const AuthRepositoryImpl(this.remoteDataSource);
+  final ConnectionChecker connectionChecker;
+  const AuthRepositoryImpl(this.remoteDataSource, this.connectionChecker);
 
   @override
   Future<Either<Failure, UserEntity>> currentUser() async {
     try {
+      if(!await(connectionChecker.isConnected)){
+final session = remoteDataSource.currentUserSession;
+if(session ==null){
+  return left(Failure('User not logged in!'));
+}
+
+return right(UserModel(name: '', phoneNumber: 0, email: session.user.email?? '', id: session.user.id, street: '', location: '', proPic: ''));
+      }
+      
       final user = await remoteDataSource.getCurrentUserData();
 
       if (user == null) {
@@ -64,6 +76,9 @@ class AuthRepositoryImpl implements AuthRepository {
     Future<UserEntity> Function() fn,
   ) async {
     try {
+      if(!await(connectionChecker.isConnected)){
+return left(Failure('No Internet Connection'));
+      }
       final user = await fn();
       return right(user);
     } on AuthException catch (e) {
@@ -82,6 +97,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return left(Failure(e.message));
     }
   }
+
+  
 
   @override
   Future<Either<Failure, void>> updateUserProfile({

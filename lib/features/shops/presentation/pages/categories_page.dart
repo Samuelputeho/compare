@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/all_categories/all_categories_bloc.dart';
+import '../bloc/all_shops/all_shops_bloc.dart';
 import '../widgets/category_tile.dart';
 
 class CategoriesPage extends StatelessWidget {
@@ -34,8 +35,60 @@ class CategoriesPage extends StatelessWidget {
             ),
           ),
         ),
-        title: Text(storeName,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        title: BlocBuilder<AllShopsBloc, AllShopsState>(
+          builder: (context, state) {
+            if (state is AllShopsSuccess) {
+              return PopupMenuButton<String>(
+                initialValue: storeName,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      storeName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+                onSelected: (String newStore) {
+                  if (newStore != storeName) {
+                    // Get categories for the selected shop
+                    context.read<AllCategoriesBloc>().add(
+                           GetCategoriesByShopNameEvent(shopName: newStore ),
+                        );
+                    // Navigate to new categories page
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CategoriesPage(
+                          storeName: newStore,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (BuildContext context) {
+                  return state.shops.map((shop) {
+                    return PopupMenuItem<String>(
+                      value: shop.shopName,
+                      child: Text(shop.shopName),
+                    );
+                  }).toList();
+                },
+              );
+            }
+            return Text(
+              storeName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          },
+        ),
         centerTitle: true,
         actions: [
           Padding(
@@ -67,14 +120,18 @@ class CategoriesPage extends StatelessWidget {
           }
 
           if (state is CategoriesByShopNameSuccess) {
+            if (state.categories.isEmpty) {
+              return const Center(child: Text('No categories found'));
+            }
+            
             return Padding(
               padding: const EdgeInsets.all(16.0),
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 1,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                  crossAxisCount: 3,
+                  childAspectRatio: 0.65,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                 ),
                 itemCount: state.categories.length,
                 itemBuilder: (context, index) {

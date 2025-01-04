@@ -36,7 +36,7 @@ class _SalesPageState extends State<SalesPage> {
   }
 
   Widget buildSaleItem(
-      DateTime? startDate, DateTime? endDate, String? storeName) {
+      String image, DateTime? startDate, DateTime? endDate, String? storeName) {
     if (startDate == null || endDate == null) {
       return const Center(child: Text("Invalid Sale Dates"));
     }
@@ -47,16 +47,8 @@ class _SalesPageState extends State<SalesPage> {
     DateTime widgetStartDate = DateTime(2024, 12, 16); // Replace with actual value
     DateTime widgetEndDate = DateTime(2024, 12, 30);  // Replace with actual value
 
-    // The product start and end dates are used in the print statements
-    print('Checking product: $storeName');
-    print('Checking overlap: Product startDate = ${DateFormat('yyyy-MM-dd').format(startDate)}, '
-          'product endDate = ${DateFormat('yyyy-MM-dd').format(endDate)}, '
-          'Widget startDate = ${DateFormat('yyyy-MM-dd').format(widgetStartDate)}, '
-          'Widget endDate = ${DateFormat('yyyy-MM-dd').format(widgetEndDate)}');
-
     // Check if the product's dates overlap with the widget's date range
-    if (!checkDateOverlap(startDate!, endDate!, widgetStartDate, widgetEndDate)) {
-      print('Product date range does not overlap with widget date range');
+    if (!checkDateOverlap(startDate, endDate, widgetStartDate, widgetEndDate)) {
       return const SizedBox.shrink();  // No product is shown if dates do not overlap
     }
 
@@ -67,8 +59,8 @@ class _SalesPageState extends State<SalesPage> {
           MaterialPageRoute(
             builder: (context) => SaleDetailsPage(
               storeName: storeName,
-              startDate: startDate,
-              endDate: endDate,
+              startDate: startDate,  // Pass startDate here
+              endDate: endDate,      // Pass endDate here
             ),
           ),
         );
@@ -77,28 +69,52 @@ class _SalesPageState extends State<SalesPage> {
         margin: const EdgeInsets.all(5),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.blue[100],
+          color: Colors.grey[100],
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.blue),
+          border: Border.all(color: Colors.grey),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            const Text(
-              'Sale',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // Image Container
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                image,  // Image URL fetched from the database
+                width: double.infinity,
+                height: 200,  // Fixed height for the image
+                fit: BoxFit.cover,
+              ),
             ),
-            Text('Starts: ${DateFormat('yyyy-MM-dd').format(startDate)}'),
-            Text('Ends: ${DateFormat('yyyy-MM-dd').format(endDate)}'),
-            Text('Days left: $daysLeft'),
+            // End Date Text at the bottom
+            Positioned(
+              bottom: 10,
+              left: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  'End Date: ${DateFormat('yyyy-MM-dd').format(endDate)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  // Updated parameter to accept a List<Map<String, Object?>> instead of List<Map<String, DateTime?>>
   Widget buildStoreSection(
-      String? storeName, List<Map<String, DateTime?>> sales) {
+      String? storeName, List<Map<String, Object?>> sales) {
     final displayStoreName = storeName ?? "Unknown Store";
 
     return Column(
@@ -126,8 +142,9 @@ class _SalesPageState extends State<SalesPage> {
           itemCount: sales.length,
           itemBuilder: (context, index) {
             return buildSaleItem(
-              sales[index]['startDate'],
-              sales[index]['endDate'],
+              (sales[index]['imageUrl'] as String?) ?? '', 
+              sales[index]['startDate'] as DateTime?,
+              sales[index]['endDate'] as DateTime?,
               storeName,
             );
           },
@@ -139,9 +156,7 @@ class _SalesPageState extends State<SalesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sales Page'),
-      ),
+      
       body: BlocBuilder<SalecardBloc, SalecardState>(builder: (context, state) {
         if (state is SalecardLoading) {
           return const Center(child: CircularProgressIndicator());
@@ -158,6 +173,7 @@ class _SalesPageState extends State<SalesPage> {
                   return {
                     'startDate': sale.startDate,
                     'endDate': sale.endDate,
+                    'imageUrl': sale.image,  // Assuming imageUrl is part of the sale data
                   };
                 }).toList();
 

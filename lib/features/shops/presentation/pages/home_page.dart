@@ -24,6 +24,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void initState() {
+    context.read<AuthBloc>();
+    
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
       if (_currentIndex < 2) {

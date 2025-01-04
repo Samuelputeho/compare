@@ -56,3 +56,5 @@ final class AuthUpdateProfile extends AuthEvent {
     required this.imagePath,
   });
 }
+
+class FetchAuthDetailsEvent extends AuthEvent {}

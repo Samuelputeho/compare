@@ -41,7 +41,20 @@ class AllCategoriesBloc extends Bloc<AllCategoriesEvent, AllCategoriesState> {
     GetCategoriesByShopNameEvent event,
     Emitter<AllCategoriesState> emit,
   ) async {
-    // get categories by shop name
+    emit(AllCategoriesLoading());
+    
+    // If allCategories is empty, fetch them first
+    if (allCategories.isEmpty) {
+      final res = await _getCategoriesUsecase(NoParams());
+      res.fold(
+        (l) => emit(AllCategoriesFailure(message: l.message)),
+        (r) {
+          allCategories = r;
+        },
+      );
+    }
+
+    // Filter categories by shop name
     categoriesByShopName = allCategories
         .where((category) => category.shopName == event.shopName)
         .toList();
